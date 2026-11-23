@@ -223,10 +223,36 @@ function buildItems(script) {
 async function api(path, body) {
   if (!cfg.url || !cfg.key) throw new Error('Configure d\'abord le serveur dans les réglages ⚙️');
   const r = await fetch(cfg.url.replace(/\/$/, '') + path, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-App-Key': cfg.key}, body: JSON.stringify(body)});
-  if (!r.ok) { let m = r.status; try { m = (await r.json()).error || m; } catch {} throw new Error(String(m)); }
+  if (!r.ok) { let m = r.status; try { m = (await r.json()).error || m; } catch {} const er = new Error(String(m)); er.status = r.status; throw er; }
   return r;
 }
 
+/* Génération du texte en étapes courtes (chaque appel < 60 s) */
+async function buildScript(base, onP) {
+  let plan;
+  try { plan = await (await api('/plan', base)).json(); }
+  catch (e) {
+    if (e.status !== 404 && e.status !== 405) {
+      for (let a = 0; a < 2 && !plan; a++) { try { plan = await (await api('/plan', base)).json(); } catch (e2) { if (a === 1) throw e2; await new Promise((r) => setTimeout(r, 2500)); } }
+    } else return await (await api('/script', base)).json();
+  }
+  const secs = plan.sections || []; const out = new Array(secs.length); let done = 0, next = 0;
+  const run = async () => {
+    while (next < secs.length) {
+      const i = next++; let lastErr;
+      for (let a = 0; a < 3 && !out[i]; a++) {
+        try { const r = await (await api('/section', {...base, outlineFormat: plan.format, sections: secs, i, wordsPer: plan.wordsPer})).json(); if (r.segments && r.segments.length) out[i] = r.segments; else throw new Error('Partie vide'); }
+        catch (e) { lastErr = e; await new Promise((r) => setTimeout(r, 2500)); }
+      }
+      if (!out[i] && i === 0) throw lastErr || new Error('Partie 1 impossible');
+      done++; onP(done / secs.length);
+    }
+  };
+  await Promise.all([run(), run(), run()]);
+  const segments = out.flatMap((x) => x || []);
+  if (!segments.length) throw new Error('Cours vide, réessaie.');
+  return {title: plan.title, emoji: plan.emoji, format: plan.format, summary: plan.summary, next: plan.next || [], segments};
+}
 /* -------------------------------------------------------- Génération */
 async function generate(topic, previous) {
   const myGen = ++gen;
@@ -237,7 +263,7 @@ async function generate(topic, previous) {
   try {
     let creep = 5; const iv = setInterval(() => { creep = Math.min(14, creep + 0.35); bar.style.width = creep + '%'; }, 500);
     let script;
-    try { script = await (await api('/script', {topic, minutes, level, format: fmt, previous})).json(); } finally { clearInterval(iv); }
+    try { script = await buildScript({topic, minutes, level, format: fmt, previous}, (p) => { creep = Math.max(creep, 5 + 9 * p); }); } finally { clearInterval(iv); }
     if (myGen !== gen) return;
     const items = buildItems(script);
     const meta = {id: Date.now().toString(36), topic, title: script.title, emoji: script.emoji, format: script.format, summary: script.summary, next: script.next || [], minutes, created: Date.now(), transcript: script.segments.map((s) => s.text).join('\n\n')};

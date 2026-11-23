@@ -269,16 +269,32 @@ async function generate(topic, previous) {
     const meta = {id: Date.now().toString(36), topic, title: script.title, emoji: script.emoji, format: script.format, summary: script.summary, next: script.next || [], minutes, created: Date.now(), transcript: script.segments.map((s) => s.text).join('\n\n')};
     items.forEach((it) => { it.ready = new Promise((res) => { it.resolve = res; }); });
     openCourse(meta, items, true);
+    await saveCourse(meta, items); renderLib();
     bar.style.width = '15%'; $('#progt').textContent = '🎙️ Mise en voix… (la lecture démarre dès le premier extrait)';
-    await runTTS(items, myGen, (n, t) => { bar.style.width = (15 + 85 * n / t) + '%'; $('#progt').textContent = `🎙️ Voix ${n}/${t}`; });
+    await runTTS(items, myGen, (n, t) => { bar.style.width = (15 + 85 * n / t) + '%'; $('#progt').textContent = `🎙️ Voix ${n}/${t}`; if (n % 2 === 0) saveCourse(meta, items); });
     if (myGen !== gen) return;
     const nf = items.filter((i) => i.failed).length;
     if (nf) { $('#err').textContent = '⚠️ ' + nf + ' passage(s) sans voix (quota Gemini du jour atteint ?). Réessaie plus tard.'; $('#err').style.display = 'block'; }
-    await dbPut({...meta, items: items.map((i) => ({kind: i.kind, text: i.text, turns: i.turns, voices: i.voices, sec: i.sec, blob: i.blob}))});
+    await saveCourse(meta, items);
     renderLib(); prog.style.display = 'none';
   } catch (e) {
     $('#err').textContent = '⚠️ ' + e.message; $('#err').style.display = 'block'; prog.style.display = 'none';
   } finally { $('#go').disabled = false; $('#more').disabled = false; }
+}
+const packItems = (items) => items.map((i) => ({kind: i.kind, text: i.text, turns: i.turns, voices: i.voices, sec: i.sec, blob: i.blob}));
+const isPartial = (items) => items.some((i) => i.kind === 'tts' && !i.blob);
+let saving = Promise.resolve();
+const saveCourse = (meta, items) => (saving = saving.then(() => dbPut({...meta, partial: isPartial(items), items: packItems(items)})).catch(() => {}));
+async function resumeVoices(meta, items) {
+  const myGen = ++gen; const missing = items.filter((i) => i.kind === 'tts' && !i.blob);
+  if (!missing.length) return;
+  missing.forEach((it) => { it.failed = false; if (!it.resolve) it.ready = new Promise((res) => { it.resolve = res; }); });
+  const prog = $('#prog'), bar = $('#prog .bar i'); prog.style.display = 'block'; bar.style.width = '5%';
+  try {
+    await runTTS(missing, myGen, (n, t) => { bar.style.width = (100 * n / t) + '%'; $('#progt').textContent = `🎙️ Voix manquantes ${n}/${t}`; if (n % 2 === 0) saveCourse(meta, items); });
+    await saveCourse(meta, items); measure(items); renderLib();
+    if (missing.some((i) => i.failed)) { $('#err').textContent = '⚠️ Certains passages restent sans voix (quota Gemini ?). Rouvre ce cours plus tard pour les compléter.'; $('#err').style.display = 'block'; }
+  } finally { prog.style.display = 'none'; }
 }
 async function runTTS(items, myGen, onProg) {
   let next = 0, done = 0; const total = items.length;
@@ -386,8 +402,8 @@ async function renderLib() {
     const d = document.createElement('div'); d.className = 'course'; d.tabIndex = 0;
     d.innerHTML = '<div class="cover"></div><b></b><small></small><button class="del" aria-label="Supprimer">' + ic('x') + '</button>';
     cover(d.querySelector('.cover'), c); d.querySelector('b').textContent = c.title;
-    d.querySelector('small').textContent = `${c.minutes} min · ${new Date(c.created).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}`;
-    d.onclick = () => { const items = c.items.map((i) => ({...i, ready: null})); openCourse(c, items, true); };
+    d.querySelector('small').textContent = `${c.minutes} min · ${new Date(c.created).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}` + (c.partial ? ' · ⏳ à compléter' : '');
+    d.onclick = () => { const items = c.items.map((i) => ({...i, ready: null})); const miss = items.filter((i) => i.kind === 'tts' && !i.blob); if (miss.length) miss.forEach((it) => { it.ready = new Promise((res) => { it.resolve = res; }); }); openCourse(c, items, true); if (miss.length) resumeVoices(c, items); };
     d.querySelector('.del').onclick = async (e) => { e.stopPropagation(); if (confirm('Supprimer ce cours ?')) { await dbDel(c.id); renderLib(); } };
     g.appendChild(d);
   });
@@ -404,7 +420,7 @@ function openSet() { $('#cfgUrl').value = cfg.url; $('#cfgKey').value = cfg.key;
 $('#btnSet').onclick = openSet;
 $('#set').onclick = (e) => { if (e.target.id === 'set') $('#set').style.display = 'none'; };
 $('#cfgSave').onclick = () => { cfg.url = $('#cfgUrl').value.trim(); cfg.key = $('#cfgKey').value.trim(); cfg.A = $('#cfgA').value; cfg.B = $('#cfgB').value; saveCfg(); $('#set').style.display = 'none'; };
-showSpeed(); renderLib();
+showSpeed(); renderLib(); try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
 if (!cfg.url || !cfg.key) openSet();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

@@ -205,7 +205,7 @@ function buildItems(script) {
   let cur = null;
   const flush = () => { if (cur) { items.push(cur); cur = null; } };
   const push = (sp, t) => {
-    const max = items.length === 0 && !cur ? 500 : 1800;
+    const max = items.length === 0 && !cur ? 500 : 1000;
     if (cur && cur.text.length + t.length > max) flush();
     if (!cur) cur = {kind: 'tts', text: '', turns: [], voices: solo ? {A: soloVoice} : {A: cfg.A, B: cfg.B}};
     const last = cur.turns[cur.turns.length - 1];

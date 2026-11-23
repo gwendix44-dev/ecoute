@@ -198,9 +198,11 @@ async function generate(topic, previous) {
   const minutes = +$('#dur').value, fmt = $('#fmt').value;
   $('#err').style.display = 'none'; $('#go').disabled = true; $('#more').disabled = true;
   const prog = $('#prog'), bar = $('#prog .bar i'); prog.style.display = 'block'; bar.style.width = '5%';
-  $('#progt').textContent = '✍️ Écriture du cours…';
+  $('#progt').textContent = '✍️ Écriture du cours… (jusqu\'à 1 min)';
   try {
-    const script = await (await api('/script', {topic, minutes, level, format: fmt, previous})).json();
+    let creep = 5; const iv = setInterval(() => { creep = Math.min(14, creep + 0.35); bar.style.width = creep + '%'; }, 500);
+    let script;
+    try { script = await (await api('/script', {topic, minutes, level, format: fmt, previous})).json(); } finally { clearInterval(iv); }
     if (myGen !== gen) return;
     const items = buildItems(script);
     const meta = {id: Date.now().toString(36), topic, title: script.title, emoji: script.emoji, format: script.format, summary: script.summary, next: script.next || [], minutes, created: Date.now(), transcript: script.segments.map((s) => s.text).join('\n\n')};

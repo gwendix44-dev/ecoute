@@ -177,7 +177,7 @@ const dbDel = (id) => tx('readwrite', (s) => s.delete(id));
 
 /* -------------------------------------------------------------- Helpers */
 const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
-const cover = (el, m) => { const h = hash(m.title) % 360; el.style.background = `linear-gradient(145deg,hsl(${h} 85% 58%),hsl(${(h + 60) % 360} 80% 34%))`; el.textContent = m.emoji || '🎧'; };
+const cover = (el, m) => { const h = hash(m.title) % 360; el.style.background = `linear-gradient(145deg,hsl(${h} 85% 58%),hsl(${(h + 60) % 360} 80% 34%))`; el.textContent = (m.emoji && /[^\x00-\x7F]/.test(m.emoji) && m.emoji.length <= 8) ? m.emoji : '🎧'; };
 const FMT = {prof: '🎓 Cours', duo: '🎙️ Podcast à deux voix', story: '📖 Histoire'};
 function silence(sec) {
   const rate = 8000, n = Math.round(rate * sec);

@@ -303,11 +303,11 @@ async function runTTS(items, myGen, onProg) {
       const it = items[next++];
       if (it.kind === 'silence') { it.blob = silence(it.sec); it.resolve(); done++; onProg(done, total); continue; }
       let ok = false;
-      for (let a = 0; a < 6 && !ok && myGen === gen; a++) {
-        try { const r = await api('/tts', {turns: it.turns, voices: it.voices}); const b = await r.blob(); if (b.size < 200) throw 0; it.blob = b; it.dur = await wavDur(b) || undefined; ok = true; } catch (e) { await new Promise((r) => setTimeout(r, Math.min(20000, 5000 * (a + 1)))); }
+      for (let a = 0; a < 14 && !ok && myGen === gen; a++) {
+        try { const r = await api('/tts', {turns: it.turns, voices: it.voices}); const b = await r.blob(); if (b.size < 200) throw 0; it.blob = b; it.dur = await wavDur(b) || undefined; ok = true; } catch (e) { if (cur && cur.items === items) $('#pfmt').textContent = '⏳ Voix Google saturées, nouvel essai automatique… (' + done + '/' + total + ' prêtes)'; await new Promise((r) => setTimeout(r, Math.min(30000, 6000 * (a + 1)))); }
       }
       if (!ok) it.failed = true;
-      it.resolve(); done++; onProg(done, total);
+      it.resolve(); done++; onProg(done, total); if (cur && cur.items === items) $('#pfmt').textContent = (FMT[cur.meta.format] || '') + ' · ' + cur.meta.minutes + ' min · voix ' + done + '/' + total;
     }
   };
   await Promise.all([worker(), worker()]);

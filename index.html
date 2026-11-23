@@ -205,7 +205,7 @@ function buildItems(script) {
   let cur = null;
   const flush = () => { if (cur) { items.push(cur); cur = null; } };
   const push = (sp, t) => {
-    const max = items.length === 0 && !cur ? 500 : 1400;
+    const max = items.length === 0 && !cur ? 500 : 1800;
     if (cur && cur.text.length + t.length > max) flush();
     if (!cur) cur = {kind: 'tts', text: '', turns: [], voices: solo ? {A: soloVoice} : {A: cfg.A, B: cfg.B}};
     const last = cur.turns[cur.turns.length - 1];
@@ -303,8 +303,8 @@ async function runTTS(items, myGen, onProg) {
       const it = items[next++];
       if (it.kind === 'silence') { it.blob = silence(it.sec); it.resolve(); done++; onProg(done, total); continue; }
       let ok = false;
-      for (let a = 0; a < 4 && !ok && myGen === gen; a++) {
-        try { const r = await api('/tts', {turns: it.turns, voices: it.voices}); const b = await r.blob(); if (b.size < 200) throw 0; it.blob = b; it.dur = await wavDur(b) || undefined; ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 3000 * (a + 1))); }
+      for (let a = 0; a < 6 && !ok && myGen === gen; a++) {
+        try { const r = await api('/tts', {turns: it.turns, voices: it.voices}); const b = await r.blob(); if (b.size < 200) throw 0; it.blob = b; it.dur = await wavDur(b) || undefined; ok = true; } catch (e) { await new Promise((r) => setTimeout(r, Math.min(20000, 5000 * (a + 1)))); }
       }
       if (!ok) it.failed = true;
       it.resolve(); done++; onProg(done, total);

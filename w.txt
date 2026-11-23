@@ -243,7 +243,7 @@ async function handleScript(req, env) {
 
 /* ------------------------------------------------------------------ Voix */
 
-const TTS_MODELS = ['gemini-3.1-flash-tts-preview', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts', 'gemini-3.8-flash-lite-tts', 'gemini-2.5-pro-preview-tts'];
+const TTS_MODELS = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'];
 const TTS_DEAD = new Map();
 const VOICES = new Set(['Puck', 'Charon', 'Fenrir', 'Orus', 'Kore', 'Aoede', 'Leda', 'Zephyr']);
 
@@ -270,30 +270,40 @@ async function handleTTS(req, env) {
   const speechConfig = multi
     ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: [{ speaker: 'A', voiceConfig: vc(A) }, { speaker: 'B', voiceConfig: vc(B) }] } }
     : { voiceConfig: vc(list[0].s === 'B' ? B : A) };
+  const minBytes = Math.max(4000, total * 22 * 48); // au moins ~ total/22 secondes d'audio (24 kHz, 16 bits)
+  const t0 = Date.now();
   const errs = [];
-  for (let pass = 0; pass < 2; pass++) {
+  while (Date.now() - t0 < 60000) {
     for (const m of TTS_MODELS) {
       if ((TTS_DEAD.get(m) || 0) > Date.now()) continue;
       try {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-          signal: AbortSignal.timeout(80000),
+          signal: AbortSignal.timeout(75000),
           body: JSON.stringify({ contents: [{ parts: [{ text: body }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig } }),
         });
-        if (r.status === 429) { const t = await r.text(); TTS_DEAD.set(m, Date.now() + (/PerDay/i.test(t) ? 3600000 : 30000)); errs.push(m + ' quota'); continue; }
-        if (!r.ok) { errs.push(m + ' ' + r.status); continue; }
+        if (r.status === 429) {
+          const t = await r.text(); const rd = /"retryDelay":\s*"(\d+)/.exec(t);
+          const daily = /PerDay/i.test(t) && !/PerMinute/i.test(t);
+          TTS_DEAD.set(m, Date.now() + (daily ? 3600000 : Math.min(60, Math.max(8, rd ? +rd[1] : 20)) * 1000)); errs.push(m + ' quota'); continue;
+        }
+        if (!r.ok) { errs.push(m + ' ' + r.status); TTS_DEAD.set(m, Date.now() + 5000); continue; }
         const d = await r.json();
         const parts = (d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
-        const b64 = (parts.find((p) => p.inlineData && p.inlineData.data) || {}).inlineData;
-        if (!b64) { errs.push(m + ' vide'); continue; }
-        const bin = atob(b64.data), pcm = new Uint8Array(bin.length);
+        const inl = (parts.find((p) => p.inlineData && p.inlineData.data) || {}).inlineData;
+        if (!inl) { errs.push(m + ' vide'); continue; }
+        const bin = atob(inl.data), pcm = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) pcm[i] = bin.charCodeAt(i);
-        if (pcm.length < 4000) { errs.push(m + ' trop court'); continue; }
+        if (pcm.length < minBytes) { errs.push(m + ' audio trop court'); continue; }
         return new Response(pcmToWav(pcm, 24000), { headers: { 'Content-Type': 'audio/wav', 'X-Engine': m, ...cors } });
       } catch (e) { errs.push(m + ' ' + String((e && e.message) || e).slice(0, 60)); }
     }
-    if (pass === 0) await sleep(2500);
+    // tous les modèles sont en pause (quota par minute) : on attend le premier qui revient
+    const next = Math.min(...TTS_MODELS.map((m) => TTS_DEAD.get(m) || 0));
+    const wait = Math.min(15000, Math.max(1500, next - Date.now()));
+    if (Date.now() - t0 + wait > 60000) break;
+    await sleep(wait);
   }
-  return json({ error: 'Voix indisponible : ' + errs.slice(-4).join(' ; ') }, 502);
+  return json({ error: 'Voix momentanément saturée : ' + errs.slice(-4).join(' ; ') }, 503);
 }

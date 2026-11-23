@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Écoute">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Écoute</title>
+<style>
+:root{--bg:#121212;--card:#1e1e1e;--card2:#2a2a2a;--txt:#fff;--mut:#b3b3b3;--acc:#1ed760;--r:16px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) 0 calc(90px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 6px}
+h1{font-size:28px;margin:0;letter-spacing:-.5px}
+.ico{width:40px;height:40px;border-radius:50%;background:var(--card);font-size:18px}
+main{padding:0 18px}
+.box{background:linear-gradient(135deg,#2b1f5c,#143b55);border-radius:20px;padding:16px;margin:12px 0}
+.box h2{margin:0 0 10px;font-size:18px}
+.row{display:flex;gap:8px}
+#topic{flex:1;min-width:0;background:rgba(255,255,255,.12);border:0;border-radius:12px;padding:14px;font-size:16px;outline:none}
+#topic::placeholder{color:#ddd9}
+#go{background:var(--acc);color:#000;font-weight:700;border-radius:12px;padding:0 18px}
+#go:disabled{opacity:.5}
+.opts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center;font-size:14px}
+.seg{display:flex;background:rgba(0,0,0,.3);border-radius:10px;padding:2px}
+.seg button{padding:6px 10px;border-radius:8px;font-size:13px;color:var(--mut)}
+.seg button.on{background:#fff;color:#000;font-weight:600}
+select{background:rgba(0,0,0,.3);border:0;border-radius:10px;padding:7px 8px;font-size:13px}
+.dur{display:flex;align-items:center;gap:8px;flex:1;min-width:150px}
+.dur input{flex:1;accent-color:var(--acc)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;background:var(--card);border-radius:20px;padding:8px 14px;font-size:14px}
+h3{margin:22px 0 10px;font-size:20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.course{background:var(--card);border-radius:var(--r);padding:10px;text-align:left;position:relative}
+.cover{aspect-ratio:1;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:56px;box-shadow:0 8px 20px #0006}
+.course b{display:block;margin-top:8px;font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.course small{color:var(--mut)}
+.del{position:absolute;top:14px;right:14px;background:#000a;border-radius:50%;width:28px;height:28px;font-size:13px}
+.empty{color:var(--mut);padding:20px 0}
+/* progress */
+#prog{display:none;margin:10px 0;padding:14px;border-radius:14px;background:var(--card)}
+#prog .bar{height:6px;background:#333;border-radius:3px;margin-top:8px;overflow:hidden}
+#prog .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+#err{color:#ff7b7b;font-size:14px;margin-top:8px;display:none}
+/* mini bar */
+#mini{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));background:#2a2a2a;border-radius:14px;display:none;align-items:center;gap:10px;padding:8px 10px;box-shadow:0 6px 24px #000a;z-index:5}
+#mini .cv{width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+#mini .t{flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mini button{font-size:22px;width:44px;height:44px}
+/* player */
+#player{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;padding:calc(14px + env(safe-area-inset-top)) 22px calc(20px + env(safe-area-inset-bottom));overflow:auto}
+#player .top{display:flex;justify-content:space-between;align-items:center}
+#pcover{width:min(76vw,320px);aspect-ratio:1;border-radius:18px;margin:16px auto 14px;display:flex;align-items:center;justify-content:center;font-size:110px;box-shadow:0 20px 50px #0008;flex:none}
+#ptitle{font-size:22px;font-weight:700;margin:0}
+#pfmt{color:#fffb;font-size:14px;margin-top:2px}
+#ptxt{margin:12px 0;font-size:16px;line-height:1.45;color:#fffe;min-height:84px;background:#0003;border-radius:12px;padding:12px}
+.pb{height:6px;background:#fff4;border-radius:3px;margin:8px 0;overflow:hidden}
+.pb i{display:block;height:100%;width:0;background:#fff}
+.ctl{display:flex;align-items:center;justify-content:space-between;margin:6px 0}
+.ctl button{font-size:30px;width:56px;height:56px}
+#pp{background:#fff;color:#000;border-radius:50%;width:72px!important;height:72px!important;font-size:30px!important}
+.sub{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.sub button{background:#0004;border-radius:20px;padding:8px 14px;font-size:14px}
+#nexts{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#nexts button{background:#0004;border-radius:12px;padding:10px 12px;text-align:left;font-size:14px}
+/* settings */
+#set{position:fixed;inset:0;background:#000c;z-index:20;display:none;align-items:flex-end}
+#set>div{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:18px 18px calc(24px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+#set label{display:block;margin:12px 0 4px;font-size:13px;color:var(--mut)}
+#set input,#set select{width:100%;background:var(--card2);border:0;border-radius:10px;padding:12px;font-size:15px}
+#set .save{background:var(--acc);color:#000;font-weight:700;border-radius:12px;padding:13px;width:100%;margin-top:16px}
+</style>
+</head>
+<body>
+<header><h1>🎧 Écoute</h1><button class="ico" id="btnSet" aria-label="Réglages">⚙️</button></header>
+<main>
+  <div class="box">
+    <h2>Qu'est-ce que tu veux apprendre ?</h2>
+    <div class="row"><input id="topic" placeholder="Ex : comment marche le nucléaire" enterkeyhint="go" autocomplete="off"><button id="go">Go</button></div>
+    <div class="opts">
+      <div class="dur">⏱ <input type="range" id="dur" min="5" max="20" step="1" value="10"><b id="durv">10 min</b></div>
+      <div class="seg" id="lvl"><button data-v="debutant" class="on">Débutant</button><button data-v="inter">Inter</button><button data-v="avance">Avancé</button></div>
+      <select id="fmt"><option value="auto">Format auto</option><option value="prof">Prof</option><option value="duo">Duo podcast</option><option value="story">Histoire</option></select>
+    </div>
+    <div id="err"></div>
+  </div>
+  <div id="prog"><div id="progt">…</div><div class="bar"><i></i></div></div>
+  <div class="chips" id="sugg"></div>
+  <h3>Tes cours</h3>
+  <div class="grid" id="lib"></div>
+  <div class="empty" id="empty">Pas encore de cours. Lance ton premier !</div>
+</main>
+
+<div id="mini"><div class="cv" id="mcv"></div><div class="t" id="mt"></div><button id="mpp">▶️</button></div>
+
+<section id="player">
+  <div class="top"><button class="ico" id="pclose" aria-label="Fermer">⌄</button><span style="font-size:13px;color:#fffb" id="pcount"></span><button class="ico" id="ptr">📝</button></div>
+  <div id="pcover"></div>
+  <h2 id="ptitle"></h2><div id="pfmt"></div>
+  <div id="ptxt" style="display:none"></div>
+  <div class="pb"><i id="pbar"></i></div>
+  <div class="ctl"><button id="prev">⏮</button><button id="back">↺</button><button id="pp">▶</button><button id="fwd">↻</button><button id="next">⏭</button></div>
+  <div class="sub"><button id="spd">1×</button><button id="more">➕ Partie suivante</button></div>
+  <div id="nexts"></div>
+</section>
+
+<div id="set"><div>
+  <h2 style="margin:0">Réglages</h2>
+  <label>Adresse du serveur (Cloudflare Worker)</label><input id="cfgUrl" placeholder="https://ecoute.xxx.workers.dev" autocapitalize="off" autocorrect="off">
+  <label>Code d'accès</label><input id="cfgKey" type="password" autocapitalize="off">
+  <label>Voix A (principale)</label>
+  <select id="cfgA"><option value="fr-FR-RemyMultilingualNeural">Rémy (homme, très naturel)</option><option value="fr-FR-HenriNeural">Henri (homme)</option><option value="fr-FR-VivienneMultilingualNeural">Vivienne (femme, très naturelle)</option><option value="fr-FR-DeniseNeural">Denise (femme)</option></select>
+  <label>Voix B (second intervenant du duo)</label>
+  <select id="cfgB"><option value="fr-FR-VivienneMultilingualNeural">Vivienne (femme, très naturelle)</option><option value="fr-FR-DeniseNeural">Denise (femme)</option><option value="fr-FR-RemyMultilingualNeural">Rémy (homme, très naturel)</option><option value="fr-FR-HenriNeural">Henri (homme)</option></select>
+  <label>Rythme de la voix</label>
+  <select id="cfgRate"><option value="-5">Posé</option><option value="0" selected>Normal</option><option value="8">Dynamique</option></select>
+  <button class="save" id="cfgSave">Enregistrer</button>
+</div></div>
+
+<audio id="au" playsinline preload="auto"></audio>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const SUGG = ['Comment fonctionne le nucléaire','Le S&P 500 expliqué','Comment investir quand on débute','L\'inflation, c\'est quoi ?','Les trous noirs','Comment marche internet','Pourquoi les avions volent','La bourse pour les nuls','L\'histoire du Concorde','Comment marche un TGV'];
+const DEF = {url:'',key:'',A:'fr-FR-RemyMultilingualNeural',B:'fr-FR-VivienneMultilingualNeural',rate:'0',speed:1};
+let cfg = Object.assign({}, DEF, JSON.parse(localStorage.getItem('ecoute-cfg') || '{}'));
+let level = 'debutant';
+let cur = null; // cours en lecture {meta, items, idx}
+let gen = 0;
+
+/* ------------------------------------------------------------ IndexedDB */
+const dbp = new Promise((res, rej) => {
+  const r = indexedDB.open('ecoute', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('courses', {keyPath: 'id'});
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+const tx = async (mode, fn) => { const db = await dbp; return new Promise((res, rej) => { const t = db.transaction('courses', mode); const out = fn(t.objectStore('courses')); t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error); }); };
+const dbAll = () => tx('readonly', (s) => s.getAll());
+const dbPut = (c) => tx('readwrite', (s) => s.put(c));
+const dbDel = (id) => tx('readwrite', (s) => s.delete(id));
+
+/* -------------------------------------------------------------- Helpers */
+const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const cover = (el, m) => { const h = hash(m.title) % 360; el.style.background = `linear-gradient(135deg,hsl(${h} 80% 55%),hsl(${(h + 50) % 360} 75% 32%))`; el.textContent = m.emoji || '🎧'; };
+const FMT = {prof: '🎓 Cours', duo: '🎙️ Podcast à deux voix', story: '📖 Histoire'};
+function silence(sec) {
+  const rate = 8000, n = Math.round(rate * sec);
+  const b = new DataView(new ArrayBuffer(44 + n)); const w = (o, s) => [...s].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); b.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, rate, true); b.setUint32(28, rate, true); b.setUint16(32, 1, true); b.setUint16(34, 8, true); w(36, 'data'); b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+  return new Blob([b], {type: 'audio/wav'});
+}
+function splitText(t, first) {
+  const sents = t.replace(/\s+/g, ' ').trim().split(/(?<=[.!?…])\s+/);
+  const out = []; let buf = '';
+  for (const s of sents) {
+    const max = out.length === 0 ? first : 560;
+    if (buf && (buf + ' ' + s).length > max) { out.push(buf); buf = s; } else buf = buf ? buf + ' ' + s : s;
+    while (buf.length > 900) { const cut = buf.lastIndexOf(',', 700); const k = cut > 200 ? cut + 1 : 700; out.push(buf.slice(0, k)); buf = buf.slice(k).trim(); }
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+function buildItems(script) {
+  const items = [];
+  const solo = script.format !== 'duo';
+  const soloVoice = hash(script.title) % 2 ? cfg.A : cfg.B;
+  for (const seg of script.segments) {
+    const voice = solo ? soloVoice : (seg.speaker === 'B' ? cfg.B : cfg.A);
+    const parts = splitText(seg.text || '', items.length === 0 ? 220 : 560);
+    parts.forEach((text) => items.push({kind: 'tts', text, voice}));
+    if (seg.pause && seg.pause > 0) items.push({kind: 'silence', sec: Math.min(12, Math.max(2, seg.pause))});
+  }
+  return items;
+}
+async function api(path, body) {
+  if (!cfg.url || !cfg.key) throw new Error('Configure d\'abord le serveur dans les réglages ⚙️');
+  const r = await fetch(cfg.url.replace(/\/$/, '') + path, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-App-Key': cfg.key}, body: JSON.stringify(body)});
+  if (!r.ok) { let m = r.status; try { m = (await r.json()).error || m; } catch {} throw new Error(String(m)); }
+  return r;
+}
+
+/* -------------------------------------------------------- Génération */
+async function generate(topic, previous) {
+  const myGen = ++gen;
+  const minutes = +$('#dur').value, fmt = $('#fmt').value;
+  $('#err').style.display = 'none'; $('#go').disabled = true; $('#more').disabled = true;
+  const prog = $('#prog'), bar = $('#prog .bar i'); prog.style.display = 'block'; bar.style.width = '5%';
+  $('#progt').textContent = '✍️ Écriture du cours…';
+  try {
+    const script = await (await api('/script', {topic, minutes, level, format: fmt, previous})).json();
+    if (myGen !== gen) return;
+    const items = buildItems(script);
+    const meta = {id: Date.now().toString(36), topic, title: script.title, emoji: script.emoji, format: script.format, summary: script.summary, next: script.next || [], minutes, created: Date.now(), transcript: script.segments.map((s) => s.text).join('\n\n')};
+    openCourse(meta, items, true);
+    bar.style.width = '15%'; $('#progt').textContent = '🎙️ Mise en voix… (la lecture démarre dès le premier extrait)';
+    await runTTS(items, myGen, (n, t) => { bar.style.width = (15 + 85 * n / t) + '%'; $('#progt').textContent = `🎙️ Voix ${n}/${t}`; });
+    if (myGen !== gen) return;
+    await dbPut({...meta, items: items.map((i) => ({kind: i.kind, text: i.text, voice: i.voice, sec: i.sec, blob: i.blob}))});
+    renderLib(); prog.style.display = 'none';
+  } catch (e) {
+    $('#err').textContent = '⚠️ ' + e.message; $('#err').style.display = 'block'; prog.style.display = 'none';
+  } finally { $('#go').disabled = false; $('#more').disabled = false; }
+}
+async function runTTS(items, myGen, onProg) {
+  let next = 0, done = 0; const total = items.length;
+  items.forEach((it) => { it.ready = new Promise((res) => { it.resolve = res; }); });
+  const worker = async () => {
+    while (next < total && myGen === gen) {
+      const it = items[next++];
+      if (it.kind === 'silence') { it.blob = silence(it.sec); it.resolve(); done++; onProg(done, total); continue; }
+      let ok = false;
+      for (let a = 0; a < 3 && !ok && myGen === gen; a++) {
+        try { const r = await api('/tts', {text: it.text, voice: it.voice, rate: +cfg.rate}); const b = await r.blob(); if (b.size < 200) throw 0; it.blob = b; ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 600 * (a + 1))); }
+      }
+      if (!ok) it.failed = true;
+      it.resolve(); done++; onProg(done, total);
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+}
+
+/* ------------------------------------------------------------- Lecteur */
+const au = $('#au');
+function openCourse(meta, items, autoplay) {
+  cur = {meta, items, idx: 0, started: false};
+  cover($('#pcover'), meta); cover($('#mcv'), meta);
+  $('#ptitle').textContent = meta.title; $('#mt').textContent = meta.title;
+  $('#pfmt').textContent = (FMT[meta.format] || '') + ' · ' + meta.minutes + ' min';
+  const h = hash(meta.title) % 360; $('#player').style.background = `linear-gradient(180deg,hsl(${h} 55% 30%),#121212 75%)`;
+  $('#ptxt').textContent = meta.transcript || '';
+  renderNexts(); $('#player').style.display = 'flex'; $('#mini').style.display = 'flex';
+  setSession(meta);
+  playAt(0, autoplay);
+}
+async function playAt(i, play = true) {
+  if (!cur) return;
+  const c = cur; i = Math.max(0, Math.min(c.items.length - 1, i)); c.idx = i;
+  const it = c.items[i];
+  $('#pcount').textContent = `${i + 1} / ${c.items.length}`;
+  $('#pbar').style.width = (100 * i / c.items.length) + '%';
+  if (it.ready) { setBuffering(!it.blob && !it.failed); await it.ready; setBuffering(false); }
+  if (cur !== c || c.idx !== i) return;
+  if (it.failed || !it.blob) return playAt(i + 1, play);
+  const old = au.src; au.src = URL.createObjectURL(it.blob); if (old.startsWith('blob:')) URL.revokeObjectURL(old);
+  au.playbackRate = cfg.speed; au.defaultPlaybackRate = cfg.speed;
+  if (play) { try { await au.play(); } catch (e) {} }
+  sync();
+}
+function setBuffering(b) { if (b) { $('#pp').textContent = '⏳'; } }
+function sync() { const p = !au.paused; $('#pp').textContent = p ? '⏸' : '▶'; $('#mpp').textContent = p ? '⏸️' : '▶️'; if ('mediaSession' in navigator) navigator.mediaSession.playbackState = p ? 'playing' : 'paused'; }
+au.addEventListener('play', sync); au.addEventListener('pause', sync);
+au.addEventListener('ended', () => { if (!cur) return; if (cur.idx + 1 < cur.items.length) playAt(cur.idx + 1, true); else { sync(); $('#pbar').style.width = '100%'; } });
+au.addEventListener('timeupdate', () => { if (!cur || !au.duration) return; $('#pbar').style.width = (100 * (cur.idx + au.currentTime / au.duration) / cur.items.length) + '%'; });
+const toggle = () => { if (!cur) return; if (au.paused) { if (!au.src) playAt(cur.idx, true); else au.play(); } else au.pause(); };
+$('#pp').onclick = toggle; $('#mpp').onclick = (e) => { e.stopPropagation(); toggle(); };
+$('#prev').onclick = () => playAt(cur.idx - 1); $('#next').onclick = () => playAt(cur.idx + 1);
+$('#back').onclick = () => { au.currentTime = Math.max(0, au.currentTime - 15); }; $('#fwd').onclick = () => { au.currentTime = Math.min(au.duration || 1e9, au.currentTime + 15); };
+$('#pclose').onclick = () => { $('#player').style.display = 'none'; };
+$('#mini').onclick = () => { $('#player').style.display = 'flex'; };
+$('#ptr').onclick = () => { const t = $('#ptxt'); t.style.display = t.style.display === 'none' ? 'block' : 'none'; };
+const SPEEDS = [0.9, 1, 1.15, 1.3, 1.5, 1.75, 2];
+function showSpeed() { $('#spd').textContent = cfg.speed + '×'; }
+$('#spd').onclick = () => { const i = SPEEDS.indexOf(cfg.speed); cfg.speed = SPEEDS[(i + 1) % SPEEDS.length]; au.playbackRate = cfg.speed; saveCfg(); showSpeed(); };
+$('#more').onclick = () => { if (cur) { $('#player').style.display = 'none'; continueCourse(cur.meta); } };
+function continueCourse(meta, idea) { const t = idea || meta.topic + ' : la suite, aller plus loin'; $('#topic').value = idea || ''; generate(t, {title: meta.title, summary: meta.summary}); }
+function renderNexts() {
+  const box = $('#nexts'); box.innerHTML = ''; const m = cur.meta;
+  (m.next || []).slice(0, 3).forEach((t) => { const b = document.createElement('button'); b.textContent = '➡️ ' + t; b.onclick = () => { $('#player').style.display = 'none'; continueCourse(m, t); }; box.appendChild(b); });
+}
+function setSession(m) {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({title: m.title, artist: 'Écoute', album: FMT[m.format] || 'Cours', artwork: [{src: 'icon-512.png', sizes: '512x512', type: 'image/png'}]});
+  const h = navigator.mediaSession.setActionHandler.bind(navigator.mediaSession);
+  const set = (a, f) => { try { h(a, f); } catch {} };
+  set('play', () => au.play()); set('pause', () => au.pause());
+  set('previoustrack', () => playAt(cur.idx - 1)); set('nexttrack', () => playAt(cur.idx + 1));
+  set('seekbackward', () => { au.currentTime = Math.max(0, au.currentTime - 15); }); set('seekforward', () => { au.currentTime += 15; });
+}
+
+/* ----------------------------------------------------------- Bibliothèque */
+async function renderLib() {
+  const all = (await dbAll()).sort((a, b) => b.created - a.created);
+  const g = $('#lib'); g.innerHTML = ''; $('#empty').style.display = all.length ? 'none' : 'block';
+  all.forEach((c) => {
+    const d = document.createElement('div'); d.className = 'course'; d.tabIndex = 0;
+    d.innerHTML = '<div class="cover"></div><b></b><small></small><button class="del" aria-label="Supprimer">✕</button>';
+    cover(d.querySelector('.cover'), c); d.querySelector('b').textContent = c.title;
+    d.querySelector('small').textContent = `${c.minutes} min · ${new Date(c.created).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}`;
+    d.onclick = () => { const items = c.items.map((i) => ({...i, ready: null})); openCourse(c, items, true); };
+    d.querySelector('.del').onclick = async (e) => { e.stopPropagation(); if (confirm('Supprimer ce cours ?')) { await dbDel(c.id); renderLib(); } };
+    g.appendChild(d);
+  });
+}
+
+/* ------------------------------------------------------------------ UI */
+const saveCfg = () => localStorage.setItem('ecoute-cfg', JSON.stringify(cfg));
+$('#dur').oninput = () => { $('#durv').textContent = $('#dur').value + ' min'; };
+$('#lvl').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; level = b.dataset.v; [...$('#lvl').children].forEach((x) => x.classList.toggle('on', x === b)); };
+$('#go').onclick = () => { const t = $('#topic').value.trim(); if (!t) return $('#topic').focus(); au.src || au.load(); generate(t, null); };
+$('#topic').onkeydown = (e) => { if (e.key === 'Enter') $('#go').click(); };
+SUGG.sort(() => Math.random() - .5).slice(0, 6).forEach((t) => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = t; b.onclick = () => { $('#topic').value = t; $('#go').click(); }; $('#sugg').appendChild(b); });
+function openSet() { $('#cfgUrl').value = cfg.url; $('#cfgKey').value = cfg.key; $('#cfgA').value = cfg.A; $('#cfgB').value = cfg.B; $('#cfgRate').value = cfg.rate; $('#set').style.display = 'flex'; }
+$('#btnSet').onclick = openSet;
+$('#set').onclick = (e) => { if (e.target.id === 'set') $('#set').style.display = 'none'; };
+$('#cfgSave').onclick = () => { cfg.url = $('#cfgUrl').value.trim(); cfg.key = $('#cfgKey').value.trim(); cfg.A = $('#cfgA').value; cfg.B = $('#cfgB').value; cfg.rate = $('#cfgRate').value; saveCfg(); $('#set').style.display = 'none'; };
+showSpeed(); renderLib();
+if (!cfg.url || !cfg.key) openSet();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

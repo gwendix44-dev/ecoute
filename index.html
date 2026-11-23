@@ -329,7 +329,7 @@ function openCourse(meta, items, autoplay) {
 }
 const fmtT = (x) => { x = Math.max(0, Math.round(x)); const m = Math.floor(x / 60), r = x % 60; return m + ':' + String(r).padStart(2, '0'); };
 const durOf = (it) => it.dur || (it.kind === 'silence' ? it.sec : Math.max(4, (it.text || '').length / 14.5));
-function wavDur(blob) { return blob.slice(0, 44).arrayBuffer().then((ab) => { const v = new DataView(ab); const br = v.getUint32(28, true); return br ? (blob.size - 44) / br : 0; }).catch(() => 0); }
+function wavDur(blob) { return blob.slice(0, 44).arrayBuffer().then((ab) => { const v = new DataView(ab); if (v.getUint32(0, false) !== 0x52494646) return new Promise((res) => { const a = new Audio(), u = URL.createObjectURL(blob); a.preload = 'metadata'; a.onloadedmetadata = () => { URL.revokeObjectURL(u); res(isFinite(a.duration) ? a.duration : blob.size / 16000); }; a.onerror = () => res(blob.size / 16000); a.src = u; }); const br = v.getUint32(28, true); return br ? (blob.size - 44) / br : 0; }).catch(() => 0); }
 async function measure(items) { await Promise.all(items.map(async (it) => { if (it.blob && !it.dur) { const d = await wavDur(it.blob); if (d > 0) it.dur = d; } })); tl(); }
 function total() { return cur ? cur.items.reduce((t, it) => t + durOf(it), 0) : 0; }
 function pos() { if (!cur) return 0; let t = 0; for (let i = 0; i < cur.idx; i++) t += durOf(cur.items[i]); return t + (au.currentTime || 0); }
